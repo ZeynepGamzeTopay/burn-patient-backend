@@ -60,6 +60,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddHostedService<ReminderBackgroundService>();
 
+builder.WebHost.UseUrls("http://0.0.0.0:10000");
 var app = builder.Build();
 
 // Ortam Konfigürasyonu
