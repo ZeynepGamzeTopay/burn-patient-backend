@@ -86,36 +86,36 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.MapControllers();
-//burası yeni
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+// //burası yeni
+// using (var scope = app.Services.CreateScope())
+// {
+//     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    var notifications = await context.Notifications
-        .Where(n => n.ForumPostID == null)
-        .ToListAsync();
+//     var notifications = await context.Notifications
+//         .Where(n => n.ForumPostID == null)
+//         .ToListAsync();
 
-    foreach (var notification in notifications)
-    {
-        // Doktoru veritabanından çek
-        var doctor = await context.Doctors
-            .FirstOrDefaultAsync(d => d.DoctorID == notification.DoctorID);
+//     foreach (var notification in notifications)
+//     {
+//         // Doktoru veritabanından çek
+//         var doctor = await context.Doctors
+//             .FirstOrDefaultAsync(d => d.DoctorID == notification.DoctorID);
 
-        if (doctor != null)
-        {
-            // Doktorun forum postunu bul
-            var relatedPost = await context.ForumPosts
-                .FirstOrDefaultAsync(fp => fp.DoctorName == doctor.Name);
+//         if (doctor != null)
+//         {
+//             // Doktorun forum postunu bul
+//             var relatedPost = await context.ForumPosts
+//                 .FirstOrDefaultAsync(fp => fp.DoctorName == doctor.Name);
 
-            if (relatedPost != null)
-            {
-                notification.ForumPostID = relatedPost.ForumPostID;
-            }
-        }
-    }
+//             if (relatedPost != null)
+//             {
+//                 notification.ForumPostID = relatedPost.ForumPostID;
+//             }
+//         }
+//     }
 
-    await context.SaveChangesAsync();
-}
+//     await context.SaveChangesAsync();
+// }
 
 
 
