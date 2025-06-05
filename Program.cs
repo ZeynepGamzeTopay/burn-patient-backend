@@ -41,7 +41,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins("https://burn-application-frontend.onrender.com")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -52,7 +52,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHostedService<ReminderBackgroundService>();
-builder.WebHost.UseUrls("http://0.0.0.0:10000");
+//builder.WebHost.UseUrls("http://0.0.0.0:10000");
 
 var app = builder.Build();
 
