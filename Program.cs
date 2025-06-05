@@ -5,19 +5,16 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using Microsoft.AspNetCore.StaticFiles;
-
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// JWT Ayarlarını Al
+// JWT Ayarları
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
-// JWT Servisini Ekle
 builder.Services.AddScoped<IJwtService, JwtService>();
-
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -30,55 +27,48 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidAudience = jwtSettings["Audience"],
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero // Token süresi dolduğunda anında geçersiz olması için
+            ClockSkew = TimeSpan.Zero
         };
     });
 
-// PostgreSQL DbContext Bağlantısı
+// DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Servis Bağımlılıklarını Kaydet
 builder.Services.AddScoped<IEmailService, EmailService>();
 
-// CORS Politikası Ekle
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3000") // React uygulamasının olduğu port
+        policy.WithOrigins("http://localhost:3000")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // CORS üzerinden kimlik doğrulaması yapılacaksa AllowCredentials kullanılır.
+              .AllowCredentials();
     });
 });
 
-// API Servislerini Ekle
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 builder.Services.AddHostedService<ReminderBackgroundService>();
-
 builder.WebHost.UseUrls("http://0.0.0.0:10000");
+
 var app = builder.Build();
 
-// Ortam Konfigürasyonu
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowReactApp"); // CORS politikasını uygula
+app.UseCors("AllowReactApp");
 app.UseHttpsRedirection();
-app.UseAuthentication();  // JWT doğrulamasını uygula
+app.UseAuthentication();
 app.UseAuthorization();
 
-// MIME Türlerini Ayarla
 var provider = new FileExtensionContentTypeProvider();
-provider.Mappings[".mp4"] = "audio/mp4"; // **.mp4 olarak değiştirildi**
-
+provider.Mappings[".mp4"] = "audio/mp4";
 
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -86,37 +76,40 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.MapControllers();
-// //burası yeni
-// using (var scope = app.Services.CreateScope())
-// {
-//     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-//     var notifications = await context.Notifications
-//         .Where(n => n.ForumPostID == null)
-//         .ToListAsync();
+await RunDatabaseUpdateAsync(app); // 👈 Veritabanı işlemi
 
-//     foreach (var notification in notifications)
-//     {
-//         // Doktoru veritabanından çek
-//         var doctor = await context.Doctors
-//             .FirstOrDefaultAsync(d => d.DoctorID == notification.DoctorID);
+await app.RunAsync(); // 👈 await kullanıldı
 
-//         if (doctor != null)
-//         {
-//             // Doktorun forum postunu bul
-//             var relatedPost = await context.ForumPosts
-//                 .FirstOrDefaultAsync(fp => fp.DoctorName == doctor.Name);
+// 👇 Veritabanı update fonksiyonu
+static async Task RunDatabaseUpdateAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-//             if (relatedPost != null)
-//             {
-//                 notification.ForumPostID = relatedPost.ForumPostID;
-//             }
-//         }
-//     }
+     // Eğer migration uygulanmamışsa uygula:
+    await context.Database.MigrateAsync(); // 👈 Migration'ları otomatik uygular
 
-//     await context.SaveChangesAsync();
-// }
+    var notifications = await context.Notifications
+        .Where(n => n.ForumPostID == null)
+        .ToListAsync();
 
+    foreach (var notification in notifications)
+    {
+        var doctor = await context.Doctors
+            .FirstOrDefaultAsync(d => d.DoctorID == notification.DoctorID);
 
+        if (doctor != null)
+        {
+            var relatedPost = await context.ForumPosts
+                .FirstOrDefaultAsync(fp => fp.DoctorName == doctor.Name);
 
-app.Run();
+            if (relatedPost != null)
+            {
+                notification.ForumPostID = relatedPost.ForumPostID;
+            }
+        }
+    }
+
+    await context.SaveChangesAsync();
+}
