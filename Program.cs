@@ -37,14 +37,18 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+// ✅ Genişletilmiş CORS Politikası
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("https://burn-application-frontend.vercel.app")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        policy.WithOrigins(
+            "https://burn-application-frontend.vercel.app",
+            "https://burn-application-frontend-git-main-zeynepgamzetopays-projects.vercel.app"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
     });
 });
 
@@ -52,7 +56,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHostedService<ReminderBackgroundService>();
-//builder.WebHost.UseUrls("http://0.0.0.0:10000");
+
+// Not: Render genellikle 0.0.0.0:8080 dinler, ama manuel port ayarlamak gerekmez
 
 var app = builder.Build();
 
@@ -63,7 +68,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowReactApp");
-app.UseHttpsRedirection();
+app.UseHttpsRedirection(); // ✅ HTTPS zorunlu
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -78,7 +83,6 @@ app.UseStaticFiles(new StaticFileOptions
 app.MapControllers();
 
 await RunDatabaseUpdateAsync(app); // 👈 Veritabanı işlemi
-
 await app.RunAsync(); // 👈 await kullanıldı
 
 // 👇 Veritabanı update fonksiyonu
@@ -87,7 +91,6 @@ static async Task RunDatabaseUpdateAsync(WebApplication app)
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-     // Eğer migration uygulanmamışsa uygula:
     await context.Database.MigrateAsync(); // 👈 Migration'ları otomatik uygular
 
     var notifications = await context.Notifications
