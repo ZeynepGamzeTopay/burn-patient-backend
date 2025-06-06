@@ -41,7 +41,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("https://burn-application-frontend.onrender.com")
+        policy.WithOrigins("https://burn-application-frontend-git-main-zeynepgamzetopays-projects.vercel.app/")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
